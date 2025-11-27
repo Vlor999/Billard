@@ -6,9 +6,14 @@ class BillardModel():
         self.objects = objects
         self.count = 0
         self.matrix = np.zeros(shape=(300, 300, 3), dtype=np.uint8)
-        pass
 
-    def render_matrix(self):
+    def update(self):
         self.count += 1
-        self.matrix =  (self.matrix + 1) % 255
-        return self.matrix
+        for ob in self.objects:
+            ob.update(self.matrix)
+
+    def verify_col(self):
+        for obj1 in self.objects:
+            for obj2 in self.objects:
+                if obj1.collision(obj2):
+                    created_object.handle_collision(obj1, obj2)
