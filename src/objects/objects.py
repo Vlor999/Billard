@@ -1,7 +1,7 @@
 import numpy as np
 from typing import Callable
 
-class object:
+class created_object:
     def __init__(self, x0: int, y0: int, parametric_repr: Callable, density: Callable) -> None:
         self.x = x0
         self.y = y0
@@ -12,11 +12,11 @@ class object:
     def __str__(self) -> str:
         return f"({self.x}, {self.y})"
 
-    def collision(self, obj2: 'object'):
+    def collision(self, obj2: 'created_object'):
         return bool
     
     @classmethod
-    def handle_collision(cls, obj1: 'object', obj2: 'object') -> None:
+    def handle_collision(cls, obj1: 'created_object', obj2: 'created_object') -> None:
         #TODO
         return
 
