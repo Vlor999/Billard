@@ -1,15 +1,68 @@
+import numpy as np
 from loguru import logger
 import cv2 as cv
 from src.objects.model import BillardModel
+from typing import Any
+from src.objects.circle import Circle
 
-def display(model: BillardModel, window_name:str, delay: int= 20) -> None:
-    model.update()
-    cv.namedWindow(winname=window_name)
-    cv.imshow(winname=window_name, mat=model.matrix)
-    while True:
-        key = cv.waitKey(delay=delay)
-        if key == ord("q"):
-            break
-        model.update()
-        cv.imshow(winname=window_name, mat=model.matrix)
-    cv.destroyWindow(window_name)
+class UI():
+    def __init__(self, model: BillardModel, window_name: str) -> None:
+        self.model = model
+        self.window_name = window_name
+        self.mouse_pos = (0, 0)
+        nl, nc, _ = self.model.matrix.shape
+        self.panel = np.ones(shape=(nl, nc // 2, 3), dtype=np.uint8) * 127
+        self.closest_ball = None
+
+    def handle_mouse_events(self, event: int,x: int,y: int, flags: int, param: Any | None) -> None:
+        self.mouse_pos = (x, y)
+        min_dist = float("inf")
+        new_closest = None
+        for elem in self.model.objects:
+            # elem.x = row (y in screen coords), elem.y = col (x in screen coords)
+            dist = (x - elem.y) ** 2 + (y - elem.x) ** 2
+            if dist < min_dist:
+                min_dist = dist
+                new_closest = elem
+        
+        # Update is_closest_object flag on circles
+        if new_closest != self.closest_ball:
+            # Reset previous closest
+            if self.closest_ball is not None and isinstance(self.closest_ball, Circle):
+                self.closest_ball.set_closest_object(False)
+            # Set new closest
+            if new_closest is not None and isinstance(new_closest, Circle):
+                new_closest.set_closest_object(True)
+            self.closest_ball = new_closest
+
+    def get_panel_informations(self):
+        nl, nc, _ = self.model.matrix.shape
+        self.panel = np.ones(shape=(nl, nc // 2, 3), dtype=np.uint8) * 127
+        cv.putText(self.panel, f"Mouse: {self.mouse_pos}", (10, 25), cv.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+        if self.closest_ball is not None:
+            cv.putText(self.panel, f"Closest element: {self.closest_ball.name}", (10, 45), cv.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+            if isinstance(self.closest_ball, Circle):
+                cv.putText(self.panel, f"Radius: {self.closest_ball.radius}", (10, 65), cv.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+                # Display color swatch
+                color = self.closest_ball.color
+                cv.rectangle(self.panel, (10, 75), (60, 105), color, -1)
+                cv.putText(self.panel, f"Color", (70, 95), cv.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+
+    def get_main_panel(self):
+        pass
+            
+
+    def display(self, delay: int= 20) -> None:
+        self.model.update()
+        cv.namedWindow(winname=self.window_name)
+        cv.setMouseCallback(window_name=self.window_name, on_mouse=self.handle_mouse_events)
+        while True:
+            key = cv.waitKey(delay=delay)
+            if key == ord("q"):
+                break
+            self.model.update()
+            self.get_main_panel()
+            self.get_panel_informations()
+            combined = np.hstack([self.model.matrix, self.panel])
+            cv.imshow(winname=self.window_name, mat=combined)
+        cv.destroyAllWindows()
