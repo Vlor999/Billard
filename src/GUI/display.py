@@ -35,6 +35,12 @@ class UI():
                 new_closest.set_closest_object(True)
             self.closest_ball = new_closest
 
+    def draw_line_to_closest(self):
+        """Draw a line between mouse position and closest ball"""
+        if self.closest_ball:
+            # cv.line expects (x, y) = (col, row), so use (elem.y, elem.x)
+            cv.line(self.model.matrix, (self.closest_ball.y, self.closest_ball.x), self.mouse_pos, (255, 0, 0), 2)
+
     def get_panel_informations(self):
         nl, nc, _ = self.model.matrix.shape
         self.panel = np.ones(shape=(nl, nc // 2, 3), dtype=np.uint8) * 127
@@ -61,6 +67,7 @@ class UI():
             if key == ord("q"):
                 break
             self.model.update()
+            self.draw_line_to_closest()  # Draw line after model.update() so it's not erased
             self.get_main_panel()
             self.get_panel_informations()
             combined = np.hstack([self.model.matrix, self.panel])
