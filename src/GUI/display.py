@@ -67,7 +67,7 @@ class UI():
             if key == ord("q"):
                 break
             self.model.update()
-            self.draw_line_to_closest()  # Draw line after model.update() so it's not erased
+            self.draw_line_to_closest()
             self.get_main_panel()
             self.get_panel_informations()
             combined = np.hstack([self.model.matrix, self.panel])
