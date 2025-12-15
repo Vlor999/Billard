@@ -19,18 +19,14 @@ class UI():
         min_dist = float("inf")
         new_closest = None
         for elem in self.model.objects:
-            # elem.x = row (y in screen coords), elem.y = col (x in screen coords)
             dist = (x - elem.y) ** 2 + (y - elem.x) ** 2
             if dist < min_dist:
                 min_dist = dist
                 new_closest = elem
         
-        # Update is_closest_object flag on circles
         if new_closest != self.closest_ball:
-            # Reset previous closest
             if self.closest_ball is not None and isinstance(self.closest_ball, Circle):
                 self.closest_ball.set_closest_object(False)
-            # Set new closest
             if new_closest is not None and isinstance(new_closest, Circle):
                 new_closest.set_closest_object(True)
             self.closest_ball = new_closest
@@ -38,7 +34,6 @@ class UI():
     def draw_line_to_closest(self):
         """Draw a line between mouse position and closest ball"""
         if self.closest_ball:
-            # cv.line expects (x, y) = (col, row), so use (elem.y, elem.x)
             cv.line(self.model.matrix, (self.closest_ball.y, self.closest_ball.x), self.mouse_pos, (255, 0, 0), 2)
 
     def get_panel_informations(self):
@@ -49,7 +44,6 @@ class UI():
             cv.putText(self.panel, f"Closest element: {self.closest_ball.name}", (10, 45), cv.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
             if isinstance(self.closest_ball, Circle):
                 cv.putText(self.panel, f"Radius: {self.closest_ball.radius}", (10, 65), cv.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
-                # Display color swatch
                 color = self.closest_ball.color
                 cv.rectangle(self.panel, (10, 75), (60, 105), color, -1)
                 cv.putText(self.panel, f"Color", (70, 95), cv.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
@@ -66,6 +60,12 @@ class UI():
             key = cv.waitKey(delay=delay)
             if key == ord("q"):
                 break
+            elif key == 13:
+                if self.closest_ball is not None:
+                    mouse_x, mouse_y = self.mouse_pos
+                    self.closest_ball.apply_force_from_position(mouse_x, mouse_y, strength_factor=0.5)
+                    logger.info(f"Force applied to {self.closest_ball.name}: {self.closest_ball.force}")
+            
             self.model.update()
             self.draw_line_to_closest()
             self.get_main_panel()
