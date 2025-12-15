@@ -1,8 +1,8 @@
 import cv2 as cv
 import numpy as np
-from src.objects.objects import created_object
+from src.objects.objects import RigidBody
 
-class Circle(created_object):
+class Circle(RigidBody):
     def __init__(self, x0, y0, radius, color: tuple[int, int, int] | None = None, highlight_color: tuple[int, int, int] = (255, 255, 0)):
         super().__init__(x0, y0)
         self.radius = radius

@@ -5,7 +5,7 @@ from random import randint
 
 global count
 count = 0
-class created_object:
+class RigidBody:
     def __init__(self, x0: int, y0: int, parametric_repr: Callable | None = None, density: Callable | None = None, name: str | None = None) -> None:
         global count
         count += 1
@@ -19,11 +19,11 @@ class created_object:
     def __str__(self) -> str:
         return f"({self.x}, {self.y})"
 
-    def collision(self, obj2: 'created_object') -> bool:
+    def collision(self, obj2: 'RigidBody') -> bool:
         return False
     
     @classmethod
-    def handle_collision(cls, obj1: 'created_object', obj2: 'created_object') -> None:
+    def handle_collision(cls, obj1: 'RigidBody', obj2: 'RigidBody') -> None:
         #TODO
         return
     
