@@ -75,9 +75,11 @@ class UI():
                 elif self.current_obj is not None:
                     mouse_x, mouse_y = self.mouse_pos
                     objs = self.model.objects[self.current_obj]
-                    self.model.objects[self.current_obj].ball.omega = (self.temp_omega_val - 100)
                     objs.apply_force_from_position(mouse_x, mouse_y, strength_factor=0.5)
                     logger.info(f"Force applied to {objs.name}: velocity={objs.velocity}")
+                    d = ((self.temp_omega_val - 100) / 200)
+                    omega = 5 * np.linalg.norm(objs.velocity) * d / (2 * self.model.objects[self.current_obj].radius)
+                    self.model.objects[self.current_obj].ball.omega = float(omega) # correct omega accoridng to the speed
                     hitted_balls = set()
 
             self.model.update()
