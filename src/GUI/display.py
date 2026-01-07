@@ -2,6 +2,7 @@ import numpy as np
 from loguru import logger
 import cv2 as cv
 from src.objects.model import BillardModel
+from src.objects.objects import RigidBody
 from typing import Any
 from src.objects.circle import Circle
 
@@ -12,64 +13,95 @@ class UI():
         self.mouse_pos = (0, 0)
         nl, nc, _ = self.model.matrix.shape
         self.panel = np.ones(shape=(nl, nc // 2, 3), dtype=np.uint8) * 127
-        self.closest_ball = None
+        self.current_obj = 0
+        self.playeur = [0, 0]
+        self.omega_window_open = False
+        self.temp_omega_val = 100
 
     def handle_mouse_events(self, event: int,x: int,y: int, flags: int, param: Any | None) -> None:
         self.mouse_pos = (x, y)
-        min_dist = float("inf")
-        new_closest = None
-        for elem in self.model.objects:
-            dist = (x - elem.y) ** 2 + (y - elem.x) ** 2
-            if dist < min_dist:
-                min_dist = dist
-                new_closest = elem
-        
-        if new_closest != self.closest_ball:
-            if self.closest_ball is not None and isinstance(self.closest_ball, Circle):
-                self.closest_ball.set_closest_object(False)
-            if new_closest is not None and isinstance(new_closest, Circle):
-                new_closest.set_closest_object(True)
-            self.closest_ball = new_closest
 
-    def draw_line_to_closest(self):
+    def draw_line_to_obj(self):
         """Draw a line between mouse position and closest ball"""
-        if self.closest_ball:
-            cv.line(self.model.matrix, (self.closest_ball.y, self.closest_ball.x), self.mouse_pos, (255, 0, 0), 2)
+        if self.current_obj >= 0:
+            objs = self.model.objects[self.current_obj]
+            cv.line(self.model.matrix, (int(objs.y), int(objs.x)), self.mouse_pos, (255, 0, 0), 2)
 
     def get_panel_informations(self):
         nl, nc, _ = self.model.matrix.shape
         self.panel = np.ones(shape=(nl, nc // 2, 3), dtype=np.uint8) * 127
         cv.putText(self.panel, f"Mouse: {self.mouse_pos}", (10, 25), cv.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
-        if self.closest_ball is not None:
-            cv.putText(self.panel, f"Closest element: {self.closest_ball.name}", (10, 45), cv.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
-            if isinstance(self.closest_ball, Circle):
-                cv.putText(self.panel, f"Radius: {self.closest_ball.radius}", (10, 65), cv.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
-                color = self.closest_ball.color
+        cv.putText(self.panel, f"Points:", (10, 125), cv.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+        cv.putText(self.panel, f"Playeur 1: {self.playeur[0]}", (10, 145), cv.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+        cv.putText(self.panel, f"Playeur 2: {self.playeur[1]}", (10, 165), cv.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+
+
+        if self.current_obj is not None:
+            objs = self.model.objects[self.current_obj]
+            cv.putText(self.panel, f"Closest element: {objs.name}", (10, 45), cv.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+            if isinstance(objs, Circle):
+                cv.putText(self.panel, f"Radius: {objs.radius}", (10, 65), cv.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+                color = objs.color
                 cv.rectangle(self.panel, (10, 75), (60, 105), color, -1)
                 cv.putText(self.panel, f"Color", (70, 95), cv.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
 
-    def get_main_panel(self):
-        pass
-            
+    def act(self, val):
+        self.temp_omega_val = val
 
     def display(self, delay: int= 20) -> None:
-        self.model.update()
+        """Main display loop with physics from global_pgs"""
         cv.namedWindow(winname=self.window_name)
         cv.setMouseCallback(window_name=self.window_name, on_mouse=self.handle_mouse_events)
+        hitted_balls: set[int] = set()
+        was_moving = False
+        
         while True:
+
             key = cv.waitKey(delay=delay)
             if key == ord("q"):
                 break
+            if key == ord("o"):
+                self.omega_window_open = True
+                cv.namedWindow("Omega", cv.WINDOW_NORMAL)
+                cv.resizeWindow("Omega", 400, 50)
+                current_omega = self.model.objects[self.current_obj].ball.omega
+                initial_val = int(current_omega * 100 + 100)
+                self.temp_omega_val = initial_val
+                cv.createTrackbar("omega", "Omega", initial_val, 200, self.act)
             elif key == 13:
-                if self.closest_ball is not None:
+                if self.omega_window_open:
+                    cv.destroyWindow("Omega")
+                    self.omega_window_open = False
+                elif self.current_obj is not None:
                     mouse_x, mouse_y = self.mouse_pos
-                    self.closest_ball.apply_force_from_position(mouse_x, mouse_y, strength_factor=0.5)
-                    logger.info(f"Force applied to {self.closest_ball.name}: {self.closest_ball.force}")
-            
+                    objs = self.model.objects[self.current_obj]
+                    self.model.objects[self.current_obj].ball.omega = (self.temp_omega_val - 100)
+                    objs.apply_force_from_position(mouse_x, mouse_y, strength_factor=0.5)
+                    logger.info(f"Force applied to {objs.name}: velocity={objs.velocity}")
+                    hitted_balls = set()
+
             self.model.update()
-            self.draw_line_to_closest()
-            self.get_main_panel()
+            moving = self.model.is_moving()
+            
+            if not moving:
+                self.draw_line_to_obj()
+                if was_moving:
+                    if len(hitted_balls) != 2:
+                        self.current_obj = 1 - self.current_obj
+                    else:
+                        self.playeur[self.current_obj] += 1
+                    was_moving = False
+            else:
+                was_moving = True
+                collisions = self.model.collisions()
+                for i, j in collisions:
+                    if i == self.model.objects[self.current_obj]:
+                        hitted_balls.add(j)
+                    elif j == self.model.objects[self.current_obj]:
+                        hitted_balls.add(i)
+                        
             self.get_panel_informations()
             combined = np.hstack([self.model.matrix, self.panel])
             cv.imshow(winname=self.window_name, mat=combined)
+            
         cv.destroyAllWindows()
