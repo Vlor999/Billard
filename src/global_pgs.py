@@ -1,18 +1,8 @@
 import numpy as np
+from src.objects.objects import Ball
 
-class Ball:
-    def __init__(self, x, y, vx, vy, omega, m, R, image_path=None):
-        self.q = np.array([x, y], dtype=float)
-        self.v = np.array([vx, vy], dtype=float)
-        self.omega = omega
-        self.theta = 0
 
-        self.m = m
-        self.R = R
-        self.I = 0.5 * m * R**2  # disk
-        self.image_path = image_path
-
-def proj_coulomb_cone(y, mu):
+def proj_coulomb_cone(y: np.ndarray, mu: float) -> np.ndarray:
     yN, yT = y
 
     # Case 1: separation
@@ -28,32 +18,35 @@ def proj_coulomb_cone(y, mu):
     rT = mu * rN * np.sign(yT)
     return np.array([rN, rT])
 
-def proj_disk(x, R):
+
+def proj_disk(x: np.ndarray, R: float) -> np.ndarray:
     norm = np.linalg.norm(x)
     if norm <= R:
         return x
     return (R / norm) * x
 
+
 class Contact:
-    def __init__(self, mu, e):
+    def __init__(self, mu: float, e: float):
         self.mu = mu
         self.e = e
         self.r = np.zeros(2)  # [rN, rT]
 
-    def solve_local(self):
+    def solve_local(self) -> np.ndarray:
         raise NotImplementedError
 
     def apply_delta_impulse(self, dr):
         raise NotImplementedError
-    
+
+
 class BallWallContact(Contact):
-    def __init__(self, ball, n, mu, e):
+    def __init__(self, ball: Ball, n, mu: float, e: float) -> None:
         super().__init__(mu, e)
         self.ball = ball
         self.n = n / np.linalg.norm(n)
         self.t = np.array([-self.n[1], self.n[0]])
 
-    def solve_local(self):
+    def solve_local(self) -> np.ndarray:
         b = self.ball
 
         # vitesse au point de contact
@@ -67,10 +60,7 @@ class BallWallContact(Contact):
 
         u_free = np.array([(1 + self.e) * uN, uT])
 
-        W = np.diag([
-            1.0 / b.m,
-            1.0 / b.m + b.R**2 / b.I
-        ])
+        W = np.diag([1.0 / b.m, 1.0 / b.m + b.R**2 / b.I])
 
         rho = np.linalg.inv(W)
 
@@ -81,7 +71,7 @@ class BallWallContact(Contact):
         self.r = r_new
         return dr
 
-    def apply_delta_impulse(self, dr):
+    def apply_delta_impulse(self, dr: np.ndarray) -> None:
         try:
             b = self.ball
             impulse = dr[0] * self.n + dr[1] * self.t
@@ -89,12 +79,12 @@ class BallWallContact(Contact):
             b.v += impulse / b.m
             b.omega += (-b.R * dr[1]) / b.I
         except:
-            print("b.I=",b.I, ", dr=",dr, ", b.R=",b.R)
+            print("b.I=", b.I, ", dr=", dr, ", b.R=", b.R)
             raise Exception("Issue 1")
 
 
 class BallBallContact(Contact):
-    def __init__(self, A, B, mu, e):
+    def __init__(self, A: Ball, B: Ball, mu: float, e: float) -> None:
         super().__init__(mu, e)
         self.A = A
         self.B = B
@@ -104,7 +94,7 @@ class BallBallContact(Contact):
         self.n = d / dist
         self.t = np.array([-self.n[1], self.n[0]])
 
-    def solve_local(self):
+    def solve_local(self) -> np.ndarray:
         A, B = self.A, self.B
 
         # Relative velocity at contact
@@ -121,10 +111,9 @@ class BallBallContact(Contact):
         # Restitution
         u_free = np.array([(1 + self.e) * uN, uT])
 
-        W = np.diag([
-            1/A.m + 1/B.m,
-            1/A.m + 1/B.m + A.R**2/A.I + B.R**2/B.I
-        ])
+        W = np.diag(
+            [1 / A.m + 1 / B.m, 1 / A.m + 1 / B.m + A.R**2 / A.I + B.R**2 / B.I]
+        )
 
         rho = np.linalg.inv(W)
         r_trial = self.r - rho @ (u_free + W @ self.r)
@@ -135,7 +124,7 @@ class BallBallContact(Contact):
 
         return dr
 
-    def apply_delta_impulse(self, dr):
+    def apply_delta_impulse(self, dr: np.ndarray) -> None:
         impulse = dr[0] * self.n + dr[1] * self.t
 
         self.A.v -= impulse / self.A.m
@@ -144,11 +133,14 @@ class BallBallContact(Contact):
         self.A.omega -= self.A.R * dr[1] / self.A.I
         self.B.omega -= self.B.R * dr[1] / self.B.I
 
-def solve_contacts_NSGS(contacts, max_iter=20000, min_err=1e-5):
+
+def solve_contacts_NSGS(
+    contacts: list[Contact], max_iter: int = 20000, min_err: float = 1e-5
+) -> None:
     it = 0
     err = float("inf")
     if len(contacts) == 0:
-        return 
+        return
     while it <= max_iter and err >= min_err:
         for c in contacts:
             dr = c.solve_local()
@@ -156,7 +148,10 @@ def solve_contacts_NSGS(contacts, max_iter=20000, min_err=1e-5):
             err = min(np.linalg.norm(dr), err)
         it += 1
 
-def ball_ball_kinematics(A, B):
+
+def ball_ball_kinematics(
+    A: Ball, B: Ball
+) -> tuple[float, np.ndarray, np.ndarray, np.ndarray]:
     d = B.q - A.q
     dist = np.linalg.norm(d)
     n = d / dist
@@ -170,9 +165,12 @@ def ball_ball_kinematics(A, B):
     uN = np.dot(n, u)
     uT = np.dot(t, u)
 
-    return dist - (A.R + B.R), n, t, np.array([uN, uT])
+    return float(dist - (A.R + B.R)), n, t, np.array([uN, uT])
 
-def detect_wall_contacts(ball, box, mu, e):
+
+def detect_wall_contacts(
+    ball: Ball, box: list[int], mu: float, e: float
+) -> list[Contact]:
     contacts = []
 
     x, y = ball.q
@@ -190,12 +188,13 @@ def detect_wall_contacts(ball, box, mu, e):
 
     return contacts
 
+
 def detect_ball_ball_contacts(balls, mu, e):
     contacts = []
     nballs = len(balls)
 
     for i in range(nballs):
-        for j in range(i+1, nballs):
+        for j in range(i + 1, nballs):
             A, B = balls[i], balls[j]
             d = B.q - A.q
             dist = np.linalg.norm(d)
@@ -205,24 +204,27 @@ def detect_ball_ball_contacts(balls, mu, e):
 
     return contacts
 
-def detect_contacts(balls, box, mu, e):
-    contacts = []
+
+def detect_contacts(balls: list[Ball], box, mu: float, e: float) -> list[Contact]:
+    contacts: list[Contact] = []
     for b in balls:
         contacts += detect_wall_contacts(b, box, mu, e)
     contacts += detect_ball_ball_contacts(balls, mu, e)
     return contacts
 
-def project_positions(balls, box):
+
+def project_positions(balls: list[Ball], box) -> None:
     xmin, xmax, ymin, ymax = box
     for b in balls:
         b.q[0] = np.clip(b.q[0], xmin + b.R, xmax - b.R)
         b.q[1] = np.clip(b.q[1], ymin + b.R, ymax - b.R)
 
-def apply_floor_friction(ball, mu, magnus_coeff, dt):
+
+def apply_floor_friction(ball: Ball, mu: float, dt: float) -> None:
     g = 9.81
     normal_impulse = ball.m * g * dt
     norm_v = np.linalg.norm(ball.v)
-    
+
     if norm_v > 1e-6:
         friction_impulse_mag = mu * normal_impulse
         momentum = ball.m * norm_v
@@ -233,7 +235,7 @@ def apply_floor_friction(ball, mu, magnus_coeff, dt):
         ball.v = np.zeros_like(ball.v)
 
     if abs(ball.omega) > 1e-6:
-        spin_impulse_mag = mu * normal_impulse * ball.R 
+        spin_impulse_mag = mu * normal_impulse * ball.R
         angular_momentum = ball.I * abs(ball.omega)
         delta_omega = min(spin_impulse_mag, angular_momentum)
         sign = np.sign(ball.omega)
@@ -242,20 +244,18 @@ def apply_floor_friction(ball, mu, magnus_coeff, dt):
         ball.omega = 0.0
 
 
-def step_system(balls, box, mu, e, dt):
+def step_system(balls: list[Ball], box, mu: float, e: float, dt: float) -> None:
     # --- wall + ball contacts ---
     contacts = detect_contacts(balls, box, mu, e)
     solve_contacts_NSGS(contacts)
 
     # --- floor friction (2.5D) ---
     for b in balls:
-        apply_floor_friction(b, mu, 0.01, dt)
+        apply_floor_friction(b, mu, dt)
 
     # --- integrate ---
     for b in balls:
         b.q += dt * b.v
-        b.theta += dt*b.omega
+        b.theta += dt * b.omega
 
     project_positions(balls, box)
-
-    
