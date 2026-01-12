@@ -220,12 +220,12 @@ def project_positions(balls: list[Ball], box) -> None:
         b.q[1] = np.clip(b.q[1], ymin + b.R, ymax - b.R)
 
 
-def apply_floor_friction(ball: Ball, mu: float, dt: float) -> None:
+def apply_floor_friction(ball: Ball, mu: float, dt: float, err: float = 1e-6) -> None:
     g = 9.81
     normal_impulse = ball.m * g * dt
     norm_v = np.linalg.norm(ball.v)
 
-    if norm_v > 1e-6:
+    if norm_v > err:
         friction_impulse_mag = mu * normal_impulse
         momentum = ball.m * norm_v
         impulse_mag = min(friction_impulse_mag, momentum)
@@ -234,7 +234,7 @@ def apply_floor_friction(ball: Ball, mu: float, dt: float) -> None:
     else:
         ball.v = np.zeros_like(ball.v)
 
-    if abs(ball.omega) > 1e-6:
+    if abs(ball.omega) > err:
         spin_impulse_mag = mu * normal_impulse * ball.R
         angular_momentum = ball.I * abs(ball.omega)
         delta_omega = min(spin_impulse_mag, angular_momentum)

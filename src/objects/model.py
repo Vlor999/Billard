@@ -4,6 +4,7 @@ import numpy as np
 from typing import Sequence
 from src.global_pgs import step_system
 from src.objects.objects import Ball
+import cv2 as cv
 
 
 class BillardModel:
@@ -15,19 +16,35 @@ class BillardModel:
         mu: float = 0.1,
         e: float = 0.95,
         dt: float = 0.1,
+        mode: str = "FR"
     ) -> None:
         self.objects = objects
         self.count = 0
         self.matrix = np.zeros(shape=shape, dtype=np.uint8)
         self.shape = shape
+        self.mode = mode
+        self.pocketed = []
+        self.player_colors = {0: (0, 165, 255), 1: (0, 0, 255)}  # orange, red
 
         # Physics parameters
         self.box = (
             box if box else [0, shape[1], 0, shape[0]]
-        )  # [xmin, xmax, ymin, ymax]
+        )
         self.matrix[self.box[0] : self.box[1], self.box[2] : self.box[3], 0] = 43
         self.matrix[self.box[0] : self.box[1], self.box[2] : self.box[3], 1] = 64
         self.matrix[self.box[0] : self.box[1], self.box[2] : self.box[3], 2] = 6
+        ymin, ymax, xmin, xmax = self.box
+        self.pockets = [
+            (xmin, ymin),  # top-left
+            (xmax, ymin),  # top-right
+            (xmin, ymax),  # bottom-left
+            (xmax, ymax),  # bottom-right
+            ((xmin + xmax) // 2, ymin),  # top-mid
+            ((xmin + xmax) // 2, ymax),  # bottom-mid
+        ] 
+        if self.mode == "US":
+            for pocket in self.pockets:
+                cv.circle(self.matrix, pocket, 20, (255, 255, 255), -1)
         self.mu = mu  # friction coefficient
         self.e = e  # restitution
         self.dt = dt  # time step
@@ -42,17 +59,43 @@ class BillardModel:
         # Step the physics simulation
         step_system(self.balls, self.box, self.mu, self.e, self.dt)
 
+        # Check for pocketed balls (only in US mode)
+        if self.mode == "US":
+            to_remove = []
+            for i, ball in enumerate(self.balls):
+                # Don't remove the white ball (index 0)
+                if i == 0:
+                    continue
+                x, y = ball.q[0], ball.q[1]
+                for pocket in self.pockets:
+                    px, py = pocket
+                    if (y - px)**2 + (x - py)**2 <= 1000:
+                        print(f"Ball pocketed: {self.objects[i].name}, color: {self.objects[i].color}")
+                        self.pocketed.append(self.objects[i])
+                        to_remove.append(i)
+                        break
+            # Remove pocketed balls from lists
+            for i in reversed(to_remove):
+                if self.objects[i].color == (0,0,0):
+                    print("The black ball enter - loose")
+                if self.objects[i].color == (255,255,255):
+                    self.objects[i].x = 200
+                    self.objects[i].y = 750
+                    print("white")
+                    continue
+                del self.objects[i]
+                del self.balls[i]
+
         # Clear the matrix before redrawing all objects
         self.matrix.fill(0)
         self.matrix[self.box[0] : self.box[1], self.box[2] : self.box[3], 0] = 43
         self.matrix[self.box[0] : self.box[1], self.box[2] : self.box[3], 1] = 64
         self.matrix[self.box[0] : self.box[1], self.box[2] : self.box[3], 2] = 6
+        if self.mode == "US":
+            for pocket in self.pockets:
+                cv.circle(self.matrix, pocket, 20, (255, 255, 255), -1)
         for ob in self.objects:
             ob.update(self.matrix)
-
-    def verify_col(self):
-        """Collision verification is now handled by step_system"""
-        return
 
     def is_moving(self) -> bool:
         """Check if any object is moving"""

@@ -14,7 +14,8 @@ class UI:
         nl, nc, _ = self.model.matrix.shape
         self.panel = np.ones(shape=(nl, nc // 2, 3), dtype=np.uint8) * 127
         self.current_obj = 0
-        self.playeur = [0, 0]
+        self.player = [0, 0]
+        self.current_player = 0
         self.omega_window_open = False
         self.temp_omega_val = 100
 
@@ -70,7 +71,7 @@ class UI:
         )
         cv.putText(
             self.panel,
-            f"Playeur 1: {self.playeur[0]}",
+            f"player 1: {self.player[0]}",
             (10, 145),
             cv.FONT_HERSHEY_SIMPLEX,
             0.5,
@@ -79,7 +80,7 @@ class UI:
         )
         cv.putText(
             self.panel,
-            f"Playeur 2: {self.playeur[1]}",
+            f"player 2: {self.player[1]}",
             (10, 165),
             cv.FONT_HERSHEY_SIMPLEX,
             0.5,
@@ -167,6 +168,7 @@ class UI:
         )
         hitted_balls: set[int] = set()
         was_moving = False
+        ball_felt = 0
 
         while True:
             key = cv.waitKey(delay=delay)
@@ -202,8 +204,8 @@ class UI:
                         / (2 * self.model.objects[self.current_obj].radius)
                     )
                     self.model.objects[self.current_obj].ball.omega = float(
-                        omega
-                    )  # correct omega accoridng to the speed
+                        omega * 0.5 # Correction
+                    )
                     hitted_balls = set()
 
             self.model.update()
@@ -212,11 +214,20 @@ class UI:
             if not moving:
                 self.draw_line_to_obj()
                 if was_moving:
-                    if len(hitted_balls) != 2:
-                        self.current_obj = 1 - self.current_obj
+                    if self.model.mode == "FR":
+                        if len(hitted_balls) != 2:
+                            self.current_obj = 1 - self.current_obj
+                        else:
+                            self.player[self.current_obj] += 1
+                        was_moving = False
                     else:
-                        self.playeur[self.current_obj] += 1
-                    was_moving = False
+                        pocketed_colors = [obj.color for obj in self.model.pocketed]
+                        if any(color == self.model.player_colors[self.current_player] for color in pocketed_colors):
+                            pass
+                        else:
+                            self.current_player = 1 - self.current_player
+                        self.model.pocketed = []
+                        was_moving = False
             else:
                 was_moving = True
                 collisions = self.model.collisions()
