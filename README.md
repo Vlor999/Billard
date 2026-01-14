@@ -12,6 +12,11 @@ uv
 uv sync
 ```
 
+Better if you use uv and if you always want to use the defined `PYTHONPATH`
+```bash
+touch .env && echo PYTHONPATH=\"$PWD\" > .env
+```
+
 ```bash
 uv run python main.py --mode=<US|FR>
 # For the FR version
