@@ -25,19 +25,19 @@ def main():
         objects = [
             Circle(250, 300, RADIUS, 0., (255, 255, 255)), # White
 
-            Circle(250, 700, RADIUS, 0., (0, 0, 0)), # Black
+            Circle(250, 690, RADIUS, 0., (0, 0, 255)), # Red
 
-            Circle(230, 735, RADIUS, 0., (0, 165, 255)), # Orange
-            Circle(270, 735, RADIUS, 0., (0, 0, 255)), # Red
+            Circle(230, 725, RADIUS, 0., (0, 165, 255)), # Orange
+            Circle(270, 725, RADIUS, 0., (0, 0, 255)), # Red
 
-            Circle(210, 770, RADIUS, 0., (0, 165, 255)), # Orange
-            Circle(250, 770, RADIUS, 0., (0, 0, 255)), # Red
-            Circle(290, 770, RADIUS, 0., (0, 165, 255)), # Orange
+            Circle(210, 760, RADIUS, 0., (0, 165, 255)), # Orange
+            Circle(250, 760, RADIUS, 0., (0, 0, 0)), # Black
+            Circle(290, 760, RADIUS, 0., (0, 165, 255)), # Orange
 
-            Circle(190, 805, RADIUS, 0., (0, 0, 255)), # Red
-            Circle(230, 805, RADIUS, 0., (0, 165, 255)), # Orange
-            Circle(270, 805, RADIUS, 0., (0, 0, 255)), # Red
-            Circle(310, 805, RADIUS, 0., (0, 165, 255)), # Orange
+            Circle(190, 795, RADIUS, 0., (0, 0, 255)), # Red
+            Circle(230, 795, RADIUS, 0., (0, 165, 255)), # Orange
+            Circle(270, 795, RADIUS, 0., (0, 0, 255)), # Red
+            Circle(310, 795, RADIUS, 0., (0, 165, 255)), # Orange
 
             Circle(170, 840, RADIUS, 0., (0, 165, 255)), # Orange
             Circle(210, 840, RADIUS, 0., (0, 0, 255)), # Red

@@ -7,7 +7,7 @@ from src.objects.circle import Circle
 
 
 class UI:
-    def __init__(self, model: BillardModel, window_name: str) -> None:
+    def __init__(self, model: BillardModel, window_name: str, delay: int = 20) -> None:
         self.model = model
         self.window_name = window_name
         self.mouse_pos = (0, 0)
@@ -18,6 +18,7 @@ class UI:
         self.current_player = 0
         self.omega_window_open = False
         self.temp_omega_val = 100
+        self.delay = delay
 
     def handle_mouse_events(
         self, event: int, x: int, y: int, flags: int, param: Any | None
@@ -123,6 +124,15 @@ class UI:
             (255, 255, 255),
             1,
         )
+        cv.putText(
+            self.panel,
+            f"- +/-: change the speed of the simulation (current: {self.delay})",
+            (10, 265),
+            cv.FONT_HERSHEY_SIMPLEX,
+            0.5,
+            (255, 255, 255),
+            1,
+        )
 
         if self.current_obj is not None:
             objs = self.model.objects[self.current_obj]
@@ -160,7 +170,7 @@ class UI:
     def act(self, val):
         self.temp_omega_val = val
 
-    def display(self, delay: int = 20) -> None:
+    def display(self) -> None:
         """Main display loop with physics from global_pgs"""
         cv.namedWindow(winname=self.window_name)
         cv.setMouseCallback(
@@ -168,10 +178,9 @@ class UI:
         )
         hitted_balls: set[int] = set()
         was_moving = False
-        ball_felt = 0
 
         while True:
-            key = cv.waitKey(delay=delay)
+            key = cv.waitKey(delay=self.delay)
             if key == ord("q"):
                 break
             if key == ord("o"):
@@ -183,7 +192,11 @@ class UI:
                 initial_val = int(current_omega * 100 + 100)
                 self.temp_omega_val = initial_val
                 cv.createTrackbar("omega", "Omega", initial_val, 200, self.act)
-            elif key == 13:
+            elif key == ord("+"):
+                self.delay += 1
+            elif key == ord("-"):
+                self.delay = max(1, self.delay - 1)
+            elif key == 13: # enter
                 if self.omega_window_open:
                     cv.destroyWindow("Omega")
                     self.omega_window_open = False
